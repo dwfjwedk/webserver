@@ -1,63 +1,53 @@
 
 #!/usr/bin/python3
-
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import socket
-import subprocess
 from io import BytesIO
-
+import json
 from keras.models import Sequential
 from keras.layers import Dense
 import pandas as pd
 import numpy as np
-from urllib import request, parse
 
-# HTTPRequestHandler class
+
 class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
 
-  # GET
-  def do_GET(self):
-        # Send response status code
+    def do_GET(self):
         self.send_response(200)
-
-        # Send headers
         self.send_header('Content-type','text/html')
         self.end_headers()
-        self.wfile.write(b'Hello, world!')
-        # Send message back to client
-        message = "<font size=+3>Hello world!(HTML)</font><p>"
+        message = "<font size=+3>Hello world!</font><p>"
         self.wfile.write(bytes(message, "utf8"))
 
-  def do_POST(self):
-        content_length = int(self.headers['Content-Length']) #  Gets the size of data
-        body = self.rfile.read(content_length)  # - Gets the data itself
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length']) 
+        body = self.rfile.read(content_length)  
         self.send_response(200)
         self.end_headers()
         response = BytesIO()
-        response.write(b'wto proishodit????. ')
-        response.write(b'This is POST request. ')
-        response.write(b'Received: ')
-        response.write(body)
+        response.write(b'This is POST request.\n')
+        response.write(b'Received as a test data: ')
+        response.write(body)        
+        response.write(b'\nPredicted by nn model:')
+        X_test = pd.DataFrame(json.loads(body.decode('utf-8')).values())        
+        resultat = modelnn(X_test)
+
+        b = resultat.get_result()
+        response.write(str(b).encode('UTF-8'))
         self.wfile.write(response.getvalue())
 
 def run():
-  print('starting server...')
-
-  # Server settings
-  # Choose port 8081, for port 80, which is normally used for a http server, you need root access
-  server_address = ('', 8888)
-  httpd = HTTPServer(server_address, testHTTPServer_RequestHandler)
-  print('running server...')
-  httpd.serve_forever()
+    print('starting server...')
+    server_address = ('', 8000)
+    httpd = HTTPServer(server_address, testHTTPServer_RequestHandler)
+    print('running server...')
+    httpd.serve_forever()
 
 class modelnn(object):
-    """docstring"""
 
-  def __init__(self,data):
-        """Constructor"""
+    def __init__(self,data):
         self.data = data
 
-  def get_result(self):
+    def get_result(self):
         train = pd.DataFrame([[0, 0, 1, 0],[1, 1, 1, 1], [1, 0, 1, 1], [0, 1, 1,0]])
         train.columns = ['ohe1', 'ohe2','ohe3', 'output']
         X_train = train[['ohe1', 'ohe2','ohe3']]
@@ -74,12 +64,5 @@ class modelnn(object):
         a = model.predict(self.data)
         b =np.apply_along_axis(lambda x: round(x[0]), 1, a )
         return b
-
-
-X_test = pd.DataFrame([[0, 0, 1],[1, 1, 1], [1, 0, 1], [0, 1, 1],[1, 0, 0]])
-X_test.columns = ['ohe1', 'ohe2','ohe3']
-resultat = modelnn(X_test)
-b = resultat.get_result() 
-
 
 run()
